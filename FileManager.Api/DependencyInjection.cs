@@ -1,6 +1,7 @@
 ﻿using FileManager.Api.Presistence;
 using FileManager.Api.Services;
 using FluentValidation;
+using Microsoft.AspNetCore.Http.Features;
 using SharpGrip.FluentValidation.AutoValidation.Mvc.Extensions;
 
 namespace FileManager.Api;
@@ -35,6 +36,17 @@ public static class DependencyInjection
     {
         services.AddFluentValidationAutoValidation()
               .AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
+
+
+        return services;
+    }
+
+    public static IServiceCollection AddFormOption(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.Configure<FormOptions>(option =>
+        {
+            option.MultipartBodyLengthLimit = 262_144_000;
+        });
 
 
         return services;

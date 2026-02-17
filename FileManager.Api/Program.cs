@@ -13,6 +13,12 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
+//Use Static File To Access Images
+//Before .Net 9
+//app.UseStaticFiles();
+// .Net 9
+app.MapStaticAssets();
+
 app.UseHttpsRedirection();
 
 app.UseAuthorization();

@@ -1,11 +1,15 @@
-﻿using FileManager.Api.Contract.File;
+﻿using Azure.Core;
+using FileManager.Api.Contract.File;
 using FileManager.Api.Entites;
+using Microsoft.VisualBasic;
+using System.IO;
 
 namespace FileManager.Api.Services;
 
 public class FileServices(IWebHostEnvironment webHostEnvironment , ApplicationDbContext context) : IFileServices
 {
     private readonly string _filePath = $"{webHostEnvironment.WebRootPath}/upload";
+    private readonly string _imagePath = $"{webHostEnvironment.WebRootPath}/image";
     private readonly ApplicationDbContext _context = context;
 
     public async Task<Guid> UploadAsync(UploadFileRequest request, CancellationToken cancellationToken = default)
@@ -21,6 +25,8 @@ public class FileServices(IWebHostEnvironment webHostEnvironment , ApplicationDb
         return uploadFile.Id;
 
     }
+
+  
 
     public async Task<IEnumerable<Guid>> UploadManyAsync( UploadManyFileRequest request, CancellationToken cancellationToken = default)
     {
@@ -38,6 +44,68 @@ public class FileServices(IWebHostEnvironment webHostEnvironment , ApplicationDb
         await _context.SaveChangesAsync(cancellationToken);
 
         return uploadFiles.Select(c => c.Id);
+
+    }
+
+    public async Task UploadImageAsync(UploadImageRequest request, CancellationToken cancellationToken = default)
+    {
+        // Path File wwwroot
+        var path = Path.Combine(_imagePath, request.Image.FileName);
+
+        //Create File And Copy Request File In Stream
+        using var stream = File.Create(path);
+        await request.Image.CopyToAsync(stream, cancellationToken);
+
+    }
+    public async Task<DownloadFileResponse> DownloadAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var file = await _context.Files.FindAsync(id , cancellationToken);
+
+        if (file is null)
+            return new DownloadFileResponse([] , string.Empty ,string.Empty);
+
+        // Path File wwwroot
+        var path = Path.Combine(_filePath, file.StoredFileName);
+
+        //مكان مؤقت في الرام  هتحط في بيانات الفايل
+        MemoryStream memoryStream = new();
+        // يقرا الملف من الهارد السيرفر
+        using FileStream fileStream = new(path, FileMode.Open);
+
+        await fileStream.CopyToAsync(memoryStream);
+        //يرجع المؤشر الي الاول 
+        memoryStream.Position = 0;
+
+        var response = new DownloadFileResponse(
+            memoryStream.ToArray(),
+            file.ContentType,
+            file.FileName
+            );
+
+        return response;
+
+
+
+    }
+
+    public async Task<StreamFileResponse> StreamAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var file = await _context.Files.FindAsync(id, cancellationToken);
+
+        if (file is null)
+            return new StreamFileResponse(null!, string.Empty, string.Empty);
+
+        // Path File wwwroot
+        var path = Path.Combine(_filePath, file.StoredFileName);
+
+        var stream  = File.OpenRead(path);
+        var response = new StreamFileResponse(
+           stream,
+           file.ContentType,
+           file.FileName
+           );
+
+        return response;
 
     }
 
@@ -61,4 +129,6 @@ public class FileServices(IWebHostEnvironment webHostEnvironment , ApplicationDb
 
         return uploadFile;
     }
+
+
 }
